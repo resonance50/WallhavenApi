@@ -159,6 +159,22 @@ _Return:_ **{Boolean}** - status of log in
 _Return:_ **{Boolean}** - status of log out
 
 ---
+##### `simple_download_image` - download image to file
+_Parameters:_
+
+* image_number {String} - image number
+
+_Keyword Parameters:_
+
+* file_path {String} - path to file or directory
+    * Defaults to wallhaven image name and current directory
+    * Directory specified using trailing slash
+    * Non-existant directories create automatically
+* chunk_size {Number} - downloading chunk size
+
+_Return:_ **{Boolean}** - status of downloading
+
+---
 
 ##### `download_image` - download image to file
 _Parameters:_

@@ -444,6 +444,58 @@ class WallhavenApi:
 
         return self._is_image_exists(BeautifulSoup(page_data.text, "html.parser"))
 
+    def simple_image_download(self, image_number, file_path=None, chunk_size=4096):
+        bs_parsed_page = self._get_image_bs_parsed_page(image_number)
+
+        if bs_parsed_page is None:
+            return False
+
+        image_url = self._get_image_url(image_number, bs_parsed_page)
+
+        if image_url is None:
+            return False
+
+        image_name = image_url.split('/')[-1]
+        if file_path is None:
+            file_path = './' + image_name
+        else: 
+            # if it is an existing directory: write image_name inside
+            if os.path.exists(file_path) and os.path.isdir(file_path):
+                file_path = os.path.join(file_path, image_name)
+            # if it is an existing file: overwrite
+            elif os.path.exists(file_path) and os.path.isfile(file_path):
+                # file_path = file_path
+                pass
+            # if file_path doesn't exist: ensure parent directory exists, create if it doesn't
+            elif not os.path.exists(file_path):
+                parent_path = os.path.dirname(file_path)
+                # don't overwrite a file to create a directory
+                if os.path.isfile(parent_path):
+                    print('"' + str(parent_path) + '" is not a directory')
+                    return False
+                if not os.path.exists(parent_path):
+                    os.makedirs(parent_path)
+
+                # if file_path has trailing slash (is a directory): write image_name inside
+                if file_path[-1] == os.path.sep:
+                    file_path = os.path.join(file_path, image_name)
+                else:
+                    # file_path = file_path
+                    pass
+
+        image_data = self._wallhaven_get(image_url, stream=True, verify=False)
+
+        logging.debug("Image page loaded with code %d", image_data.status_code)
+
+        if image_data.status_code != 200:
+            return False
+
+        with open(file_path, "wb") as image_file:
+            for chunk in image_data.iter_content(chunk_size):
+                image_file.write(chunk)
+
+        return True
+
     def download_image(self, image_number, file_path, chunk_size=4096):
         bs_parsed_page = self._get_image_bs_parsed_page(image_number)
 
