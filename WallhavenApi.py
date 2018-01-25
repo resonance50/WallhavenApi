@@ -752,11 +752,15 @@ class WallhavenApi:
             return []
 
         for collection_tag in collection_tags:
-            id = None
+            ID = None
             name = None
+            private = None
             if 'data-collection-id' in collection_tag.attrs:
-                id = collection_tag.attrs['data-collection-id']
-            if id:
+                ID = collection_tag.attrs['data-collection-id']
+            if 'class' in collection_tag.attrs:
+                classNames = collection_tag.attrs['class']
+                private = 'private' in classNames
+            if ID:
                 for child in collection_tag.children:
                     if child.attrs['class'] and 'label' in child.attrs['class']:
                         for c in child.contents:
@@ -767,18 +771,39 @@ class WallhavenApi:
             if name:
                 collections.append({
                     "collection_name": name,
-                    "collection_id": id
+                    "collection_id": ID,
+                    "is_private": private
                 })
 
         return collections
     
-    def add_collection(self, collection_name):
+    def add_collection(self, collection_name, private=True):
         params = {
             "_token": self.token,
-            "label": collection_name
+            "label": collection_name,
         }
+        if private:
+            params['private'] = 'private'
+            
         page = self._wallhaven_post(
             "https://alpha.wallhaven.cc/collection/new",
+            params=params,
+            verify=self.verify_connection
+        )
+        
+        # return codes can't be trusted,
+        return True
+        #if page.status_code == 302:
+        #    return True
+        #else:
+        #    return False
+
+    def toggle_collection_privacy(collection_id):
+        params = {
+            "_token": self.token
+        }
+        page = self._wallhaven_get(
+            "https://alpha.wallhaven.cc/collection/privacy/{0}".format(str(collection_id)),
             params=params,
             verify=self.verify_connection
         )
