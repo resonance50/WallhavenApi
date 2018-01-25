@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup, element
 import threading
 import os
 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 class WallhavenApi:
     def __init__(self, username=None, password=None, verify_connection=False):
@@ -524,6 +527,96 @@ class WallhavenApi:
                 image_file.write(chunk)
 
         return True
+
+    def download_collection_images(self, 
+                                collection_name='Default', 
+                                download_folder=None, 
+                                sort_by_tags=[], 
+                                sort_by_purity=False, 
+                                sort_by_category=False,
+                                sorting_hierarchy=['category', 'purity', 'tags'],
+                                limit_to_purities=['SFW', 'Sketchy', 'NSFW'],
+                                limit_to_categories=['Anime', 'People', 'General'],
+                                limit_to_tags=False):
+
+        if not download_folder:
+            download_folder = os.path.join('.', collection_name, '')
+
+        collections = self.get_collections()
+        collection_id = None
+        for c in collections:
+            if c["collection_name"] == collection_name:
+                collection_id = c["collection_id"]
+                break
+
+        if not collection_id:
+            print('no collection called "{0}" was found'.format(collection_name))
+
+        image_ids = self.get_images_numbers_from_user_collection_by_id(collection_id)
+
+        for i, img_id in enumerate(image_ids):
+            print('')
+            print('downloading image: {0} | {1} of {2}'.format(img_id, i+1, len(image_ids)), end='')
+            path = download_folder
+            if any([sort_by_tags, 
+                    sort_by_purity, 
+                    sort_by_category, 
+                    limit_to_tags, 
+                    limit_to_categories, 
+                    limit_to_purities]
+            ):
+                image_data = self.get_image_data(img_id)
+                if limit_to_purities:
+                    limit = True
+                    for p in limit_to_purities:
+                        if p.lower() == image_data["Purity"].lower():
+                            limit = False
+                            break
+                    if limit:
+                        print(' | Not Downloaded (Purity Limit Set)', end='')
+                        continue # to next image_id
+
+                if limit_to_categories:
+                    limit = True
+                    for c in limit_to_categories:
+                        if c.lower() == image_data["Category"].lower():
+                            limit = False
+                            break
+                    if limit:
+                        print(' | Not Downloaded (Category Limit Set)', end='')
+                        continue # to next image_id
+
+                if limit_to_tags: # if sort_by_tags is empty no images will be downloaded
+                    limit=True
+                    for t in sort_by_tags:
+                        for tag in image_data["Tags"]:
+                            if t.lower() == tag.lower():
+                                limit=False
+                                break
+                    if limit:
+                        print(' | Not Downloaded (Tag Limit Set)', end='')
+                        continue # to next image_id
+
+                for sort_type in sorting_hierarchy:
+                    if sort_type.lower()=='category' and sort_by_category:
+                        path = os.path.join(path, image_data["Category"], '')
+                    if sort_type.lower()=='purity' and sort_by_purity:
+                        path = os.path.join(path, image_data["Purity"], '')
+                    if sort_type.lower()=='tags' and sort_by_tags:
+                        folder_tag = ''
+                        # join all found tag names into one folder name
+                        for t in sort_by_tags:
+                            for tag in image_data["Tags"]:
+                                if t.lower() == tag.lower():
+                                    folder_tag += '_' + t
+                        # if any tags were found, create the subfolder 
+                        if folder_tag:
+                            folder_tag = folder_tag[1:] # cut off first underscore
+                            path = os.path.join(path, folder_tag, '')
+
+            self.simple_image_download(img_id, path)
+
+        print('')   
 
     def get_image_uploader(self, image_number):
         return self._get_image_uploader(image_number)
