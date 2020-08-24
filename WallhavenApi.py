@@ -542,6 +542,9 @@ class WallhavenApi:
         if not download_folder:
             download_folder = os.path.join('.', collection_name, '')
 
+        elif not os.path.isdir(download_folder):
+            raise RuntimeError('download directory does not exist')
+
         collections = self.get_collections()
         collection_id = None
         for c in collections:
@@ -795,7 +798,7 @@ class WallhavenApi:
 #        
 #        return page.status_code
     
-    def image_remove_from_favorites(self, image_number, double_check=True):
+    def image_remove_from_favorites(self, image_number, double_check=False):
         params = {
             "_token": self.token
         }
